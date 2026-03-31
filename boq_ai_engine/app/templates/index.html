@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BOQ AI Engine</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Construction Intelligence</div>
+        <h1>BOQ AI Engine</h1>
+        <p class="hero-copy">Upload a full project pack — Excel schedules and discipline PDFs — then get a structured BOQ-ready summary with discipline detection, drawing index clues, extracted items, and estimated totals.</p>
+      </div>
+      <div class="hero-card">
+        <div class="hero-stat"><span>Supports</span><strong>XLS / XLSX / CSV / PDF</strong></div>
+        <div class="hero-stat"><span>Disciplines</span><strong>ARCH / STR / ELECT / HVAC / PL</strong></div>
+        <div class="hero-stat"><span>Output</span><strong>BOQ summary + review table</strong></div>
+      </div>
+    </header>
+
+    <section class="upload-card">
+      <form action="/analyze" method="post" enctype="multipart/form-data">
+        <label class="file-picker">
+          <span>Select project files</span>
+          <input type="file" name="files" multiple required />
+        </label>
+        <button type="submit">Analyze Project Pack</button>
+      </form>
+      <p class="hint">Tip: upload the whole pack together, including schedules and all discipline drawings.</p>
+    </section>
+
+    {% if result %}
+    <section class="result-grid top-grid">
+      <article class="panel accent">
+        <h2>Project Summary</h2>
+        <div class="metric-row"><span>Project name</span><strong>{{ result.project_name }}</strong></div>
+        <div class="metric-row"><span>Uploaded files</span><strong>{{ result.files|length }}</strong></div>
+        <div class="metric-row"><span>Extracted items</span><strong>{{ result.item_count }}</strong></div>
+        <div class="metric-row"><span>Estimated total</span><strong>{{ '{:,.2f}'.format(result.grand_total) }}</strong></div>
+      </article>
+
+      <article class="panel">
+        <h2>Discipline Totals</h2>
+        {% for key, value in result.discipline_totals.items() %}
+        <div class="metric-row"><span>{{ key }}</span><strong>{{ '{:,.2f}'.format(value) }}</strong></div>
+        {% else %}
+        <p class="muted">No totals detected yet.</p>
+        {% endfor %}
+      </article>
+
+      <article class="panel">
+        <h2>Category Totals</h2>
+        {% for key, value in result.category_totals.items() %}
+        <div class="metric-row"><span>{{ key }}</span><strong>{{ '{:,.2f}'.format(value) }}</strong></div>
+        {% else %}
+        <p class="muted">No category totals detected yet.</p>
+        {% endfor %}
+      </article>
+    </section>
+
+    <section class="panel">
+      <h2>Detected Files</h2>
+      <div class="file-cards">
+        {% for file in result.files %}
+        <div class="file-card">
+          <div class="tag">{{ file.discipline }}</div>
+          <h3>{{ file.filename }}</h3>
+          <p>{{ file.filetype|upper }} · {{ file.pages_or_sheets }} pages/sheets · {{ file.extracted_rows }} extracted rows</p>
+          {% for note in file.notes %}<p class="muted">{{ note }}</p>{% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="result-grid">
+      <article class="panel wide">
+        <h2>Extracted BOQ Items</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Ref</th>
+                <th>Discipline</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Qty</th>
+                <th>Unit</th>
+                <th>Rate</th>
+                <th>Total</th>
+                <th>Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in result.items[:120] %}
+              <tr>
+                <td>{{ item.source_file }}</td>
+                <td>{{ item.source_ref }}</td>
+                <td>{{ item.discipline }}</td>
+                <td>{{ item.category }}</td>
+                <td>{{ item.description }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.unit }}</td>
+                <td>{{ item.rate }}</td>
+                <td>{{ item.line_total }}</td>
+                <td>{{ item.confidence }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <h2>Drawing Index Clues</h2>
+        <div class="index-list">
+          {% for row in result.drawing_index[:60] %}
+          <div class="index-item">
+            <strong>{{ row.drawing_no }}</strong>
+            <span>{{ row.title }}</span>
+            <small>{{ row.source_file }} · {{ row.discipline }}</small>
+          </div>
+          {% else %}
+          <p class="muted">No drawing index clues found.</p>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+    {% endif %}
+  </div>
+</body>
+</html>
